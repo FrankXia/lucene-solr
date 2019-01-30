@@ -539,6 +539,7 @@ class FacetFieldParser extends FacetParser<FacetField> {
       facet.missing = getBoolean(m, "missing", facet.missing);
       facet.numBuckets = getBoolean(m, "numBuckets", facet.numBuckets);
       facet.prefix = getString(m, "prefix", facet.prefix);
+      facet.left = (int)getLong(m, "left", facet.left);
       facet.allBuckets = getBoolean(m, "allBuckets", facet.allBuckets);
       facet.method = FacetField.FacetMethod.fromString(getString(m, "method", null));
       facet.cacheDf = (int)getLong(m, "cacheDf", facet.cacheDf);

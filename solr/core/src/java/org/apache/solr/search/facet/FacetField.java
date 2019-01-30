@@ -33,6 +33,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.BytesRef;
@@ -61,6 +62,7 @@ public class FacetField extends FacetRequest {
   boolean allBuckets;   // show cumulative stats across all buckets (this can be different than non-bucketed stats across all docs because of multi-valued docs)
   boolean numBuckets;
   String prefix;
+  int left;
   String sortVariable;
   SortDirection sortDirection;
   FacetMethod method;
@@ -568,6 +570,16 @@ abstract class FacetFieldProcessorFCBase extends FacetFieldProcessor {
     return findTopSlots();
   }
 
+  //LEFT
+  private boolean isAlreadyInTheList(List<Object> bucketVals, Object val) {
+    int index=0;
+    while (index < bucketVals.size()) {
+      if (bucketVals.get(index).equals(val))
+        return true;
+      index++;
+    }
+    return false;
+  }
 
   protected SimpleOrderedMap<Object> findTopSlots() throws IOException {
     SimpleOrderedMap<Object> res = new SimpleOrderedMap<>();
@@ -608,7 +620,16 @@ abstract class FacetFieldProcessorFCBase extends FacetFieldProcessor {
         int ord = startTermIndex + i;
         BytesRef br = lookupOrd(ord);
         Object val = sf.getType().toObject(sf, br);
-        bucketVals.add(val);
+
+        //LOD, if it is a LOD  aggregation, this 'val' should be a string
+        // then we would substring it with given 'lod' parameter.
+        if (freq.left > 0) {
+          val = ((String) val).substring(0, freq.left);
+          if (!isAlreadyInTheList(bucketVals, val))
+            bucketVals.add(val);
+        } else {
+          bucketVals.add(val);
+        }
       }
 
 
@@ -666,21 +687,55 @@ abstract class FacetFieldProcessorFCBase extends FacetFieldProcessor {
     // TODO: do this with a callback instead?
     boolean needFilter = deferredAggs != null || freq.getSubFacets().size() > 0;
 
+    boolean isLEFTFacet = freq.left > 0;
+
     for (int slotNum : sortedSlots) {
-      SimpleOrderedMap<Object> bucket = new SimpleOrderedMap<>();
+      //LEFT - start
+      if (isLEFTFacet) {
+        // get the ord of the slot...
+        int ord = startTermIndex + slotNum;
+        BytesRef br = lookupOrd(ord);
+        Object val = sf.getType().toObject(sf, br);
 
-      // get the ord of the slot...
-      int ord = startTermIndex + slotNum;
+        String encoding = (String)val; // if it is an LEFT facet, then the value must be a String
+        String bucketVal = encoding.substring(0,freq.left);
+        SimpleOrderedMap existingBucket = findInBucketList(bucketList, bucketVal);
+        if (existingBucket != null) {
+          // add count
+          int totalCount = (Integer) existingBucket.get("count") + countAcc.getCount(slotNum);
+          int countIndex = existingBucket.indexOf("count", 0);
+          existingBucket.setVal(countIndex, totalCount);
+        } else {
+          SimpleOrderedMap<Object> bucket = new SimpleOrderedMap<>();
+          bucket.add("val", bucketVal);
 
-      BytesRef br = lookupOrd(ord);
-      Object val = sf.getType().toObject(sf, br);
+          PrefixQuery filter = null;
+          if (needFilter) {
+            //filter = new TermQuery(new Term(sf.getName(), bucketVal +"*"));
+            filter = new PrefixQuery(new Term(sf.getName(), bucketVal));
+          }
+          fillBucket(bucket, countAcc.getCount(slotNum), slotNum, null, filter);
 
-      bucket.add("val", val);
+          bucketList.add(bucket);
+        }
+        // LEFT - end
 
-      TermQuery filter = needFilter ? new TermQuery(new Term(sf.getName(), br)) : null;
-      fillBucket(bucket, countAcc.getCount(slotNum), slotNum, null, filter);
+      } else {
+        SimpleOrderedMap<Object> bucket = new SimpleOrderedMap<>();
 
-      bucketList.add(bucket);
+        // get the ord of the slot...
+        int ord = startTermIndex + slotNum;
+
+        BytesRef br = lookupOrd(ord);
+        Object val = sf.getType().toObject(sf, br);
+
+        bucket.add("val", val);
+
+        TermQuery filter = needFilter ? new TermQuery(new Term(sf.getName(), br)) : null;
+        fillBucket(bucket, countAcc.getCount(slotNum), slotNum, null, filter);
+
+        bucketList.add(bucket);
+      }
     }
 
     if (freq.missing) {
@@ -692,6 +747,19 @@ abstract class FacetFieldProcessorFCBase extends FacetFieldProcessor {
     return res;
   }
 
+
+  private SimpleOrderedMap findInBucketList(ArrayList bucketList, String val) {
+    int index=0;
+    while (index < bucketList.size()) {
+      Object bucket = bucketList.get(index);
+      if (bucket instanceof SimpleOrderedMap) {
+        String currentVal = (String)((SimpleOrderedMap)bucket).get("val");
+        if (currentVal.equalsIgnoreCase(val)) return (SimpleOrderedMap)bucket;
+      }
+      index++;
+    }
+    return null;
+  }
 
 }
 

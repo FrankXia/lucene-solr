@@ -208,6 +208,12 @@ public class SimpleFacets {
     // allow explicit set of the key
     key = localParams.get(CommonParams.OUTPUT_KEY, key);
 
+    int left = localParams.getInt(FacetParams.FACET_LEFT, -1);
+    if (left > 0) {
+      key = key.substring(0, left);
+    }
+    System.out.println("SimpleFacets.left => " + left);
+
     String tagStr = localParams.get(CommonParams.TAG);
     tags = tagStr == null ? Collections.<String>emptyList() : StrUtils.splitSmart(tagStr,',');
 
@@ -396,6 +402,7 @@ public class SimpleFacets {
     // default to sorting if there is a limit.
     String sort = params.getFieldParam(field, FacetParams.FACET_SORT, limit>0 ? FacetParams.FACET_SORT_COUNT : FacetParams.FACET_SORT_INDEX);
     String prefix = params.getFieldParam(field, FacetParams.FACET_PREFIX);
+    int left = params.getFieldInt(field, FacetParams.FACET_LEFT);
     String contains = params.getFieldParam(field, FacetParams.FACET_CONTAINS);
     boolean ignoreCase = params.getFieldBool(field, FacetParams.FACET_CONTAINS_IGNORE_CASE, false);
 
@@ -459,6 +466,7 @@ public class SimpleFacets {
             jsonFacet.put("mincount", mincount);
             jsonFacet.put("missing", missing);
             jsonFacet.put("prefix", prefix);
+          jsonFacet.put("left", left);
             jsonFacet.put("numBuckets", params.getFieldBool(field, "numBuckets", false));
             jsonFacet.put("allBuckets", params.getFieldBool(field, "allBuckets", false));
             jsonFacet.put("method", "uif");

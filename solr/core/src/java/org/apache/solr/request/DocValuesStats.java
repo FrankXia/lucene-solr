@@ -52,7 +52,7 @@ import org.apache.solr.search.SolrIndexSearcher;
 public class DocValuesStats {
   private DocValuesStats() {}
   
-  public static StatsValues getCounts(SolrIndexSearcher searcher, StatsField statsField, DocSet docs, String[] facet) throws IOException {
+  public static StatsValues getCounts(SolrIndexSearcher searcher, StatsField statsField,int left,  DocSet docs, String[] facet) throws IOException {
 
     final SchemaField schemaField = statsField.getSchemaField(); 
 
@@ -75,7 +75,7 @@ public class DocValuesStats {
       }
       
       SchemaField facetSchemaField = searcher.getSchema().getField(facetField);
-      facetStats[upto++] = new FieldFacetStats(searcher, facetSchemaField, statsField);
+      facetStats[upto++] = new FieldFacetStats(searcher, facetSchemaField, left, statsField);
     }
     // TODO: remove multiValuedFieldCache(), check dv type / uninversion type?
     final boolean multiValued = schemaField.multiValued() || ft.multiValuedFieldCache();

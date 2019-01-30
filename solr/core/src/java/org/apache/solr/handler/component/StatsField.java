@@ -202,6 +202,7 @@ public class StatsField {
   private final String key;
   private final boolean  topLevelCalcDistinct;
   private final String[] facets;
+  private int left = -1;
   private final List<String> tagList;
   private final List<String> excludeTagList;
   private final EnumSet<Stat> statsToCalculate = EnumSet.noneOf(Stat.class);
@@ -421,7 +422,7 @@ public class StatsField {
         && (schemaField.multiValued() || schemaField.getType().multiValuedFieldCache())) {
 
       // TODO: should this also be used for single-valued string fields? (should work fine)
-      return DocValuesStats.getCounts(searcher, this, base, facets);
+      return DocValuesStats.getCounts(searcher, this, left, base, facets);
     } else {
       // either a single valued field we pull from FieldCache, or an explicit
       // function ValueSource
@@ -444,7 +445,7 @@ public class StatsField {
           "Stats can only facet on single-valued fields, not: " + facetField );
       }
 
-      facetStats.add(new FieldFacetStats(searcher, fsf, this));
+      facetStats.add(new FieldFacetStats(searcher, fsf, left,this));
     }
 
     final Iterator<LeafReaderContext> ctxIt = searcher.getIndexReader().leaves().iterator();

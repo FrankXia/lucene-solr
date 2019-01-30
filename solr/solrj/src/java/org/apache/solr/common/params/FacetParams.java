@@ -153,6 +153,9 @@ public interface FacetParams {
    */
   public static final String FACET_PREFIX = FACET + ".prefix";
 
+
+  public static final String FACET_LEFT = FACET + ".left";
+
   /**
    * Only return constraints of a facet field containing the given string.
    */

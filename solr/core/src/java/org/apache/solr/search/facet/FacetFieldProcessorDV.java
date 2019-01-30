@@ -81,7 +81,7 @@ class FacetFieldProcessorDV extends FacetFieldProcessorFCBase {
       endTermIndex = (int)si.getValueCount();
     }
 
-    nTerms = endTermIndex - startTermIndex;
+    nTerms = endTermIndex - startTermIndex; //LEFT notes: in case of LEFT facet, this would be maximum terms!
   }
 
   @Override

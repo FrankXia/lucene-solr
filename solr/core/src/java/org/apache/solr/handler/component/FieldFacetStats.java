@@ -57,12 +57,14 @@ public class FieldFacetStats {
   LeafReaderContext context;
   FunctionValues values;
 
+  private int left;
   SortedDocValues topLevelSortedValues = null;
 
-  public FieldFacetStats(SolrIndexSearcher searcher, SchemaField facet_sf, StatsField statsField) {
+  public FieldFacetStats(SolrIndexSearcher searcher, SchemaField facet_sf, int left, StatsField statsField) {
     this.statsField = statsField;
     this.facet_sf = facet_sf;
     this.name = facet_sf.getName();
+    this.left = left;
 
     topLevelReader = searcher.getLeafReader();
     valueSource = facet_sf.getType().getValueSource(facet_sf, null);
@@ -84,9 +86,10 @@ public class FieldFacetStats {
 
   // docID is relative to the context
   public void facet(int docID) throws IOException {
-    final String key = values.exists(docID)
+    String key = values.exists(docID)
         ? values.strVal(docID)
         : null;
+    if (key != null && left > 0) key = key.substring(0, left);
     final StatsValues stats = getStatsValues(key);
     stats.accumulate(docID);
   }
